@@ -1,0 +1,18 @@
+{
+  "name": "mllabs-obsidian-git",
+  "version": "0.0.1",
+  "description": "A plugin for using git within obsidian.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "kblissett",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^4.3.2"
+  },
+  "dependencies": {
+    "@types/node": "^15.12.2",
+    "obsidian": "^0.12.5"
+  }
+}

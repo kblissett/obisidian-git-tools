@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "lib": [
+            "ES2015",
+            "dom"
+        ]
+    },
+    "include": [
+        "**/*.ts"
+    ]
+}

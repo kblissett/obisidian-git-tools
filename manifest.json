@@ -1,0 +1,8 @@
+{
+    "id": "mllabs-obsidian-git",
+    "name": "Obsidian Git",
+    "version": "0.0.1",
+    "minAppVersion": "0.9.12",
+    "description": "A plugin for using git within obsidian.",
+    "author": "kblissett"
+}
