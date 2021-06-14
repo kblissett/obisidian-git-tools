@@ -1,15 +1,15 @@
-import { App, Modal, Notice, Plugin, Vault, FuzzySuggestModal } from 'obsidian';
+import { App, Modal, Notice, Plugin, FuzzySuggestModal } from 'obsidian';
 import { exec } from 'child_process';
-import { cwd, chdir } from 'process';
-import { readdir } from 'fs/promises';
+import { chdir } from 'process';
 import { promisify } from 'util';
 
+const execPromise = promisify(exec);
 
 export default class MyPlugin extends Plugin {
     async onload() {
         console.log('loading Git plugin');
 
-        this.addRibbonIcon('sync', 'Git', (event) => {
+        this.addRibbonIcon('sync', 'Git', _ => {
             new GitFuzzySuggestModal(this.app).open();
         })
 
@@ -18,18 +18,7 @@ export default class MyPlugin extends Plugin {
             name: 'Git Status',
             callback: async () => {
                 console.log("preparing to get git status...")
-                const vault = new Vault();
-                const path = vault.getRoot().path;
-
-                const execPromise = promisify(exec)
-
                 chdir("/Users/kblissett/dev/mleng-knowledge-base")
-                console.log(`Root is ${path}`);
-                console.log(`cwd is: ${cwd()}`);
-
-                const files = await readdir(cwd());
-                for (const file of files)
-                    console.log(`Found file: ${file}`);
 
                 const { stdout, stderr } = await execPromise("git status");
 
@@ -37,9 +26,24 @@ export default class MyPlugin extends Plugin {
                 console.log(`Git status stderr: ${stderr}`);
 
                 new SampleModal(this.app, stdout).open();
-
             }
         });
+
+        this.addCommand({
+            id: 'git-pull',
+            name: "Git Pull",
+            callback: async () => {
+                console.log("Preparing for a git pull");
+                chdir("/Users/kblissett/dev/mleng-knowledge-base");
+
+                const { stdout, stderr } = await execPromise("git pull");
+
+                console.log(`Git status stdout: ${stdout}`);
+                console.log(`Git status stderr: ${stderr}`);
+
+                new Notice(stdout);
+            }
+        })
     }
 }
 
@@ -75,8 +79,6 @@ export class GitFuzzySuggestModal extends FuzzySuggestModal<string> {
         const actions = {
             "status": async () => {
                 console.log("preparing to get git status...")
-                const execPromise = promisify(exec)
-
                 chdir("/Users/kblissett/dev/mleng-knowledge-base")
 
                 const { stdout, stderr } = await execPromise("git status");
