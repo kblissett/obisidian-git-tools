@@ -6,6 +6,8 @@ import { promisify } from 'util';
 const execPromise = promisify(exec);
 
 export default class MyPlugin extends Plugin {
+    // @ts-ignore
+    vaultRoot: string = this.app.vault.adapter.basePath
     async onload() {
         console.log('loading Git plugin');
 
@@ -28,9 +30,9 @@ export default class MyPlugin extends Plugin {
             name: 'Git Status',
             callback: async () => {
                 console.log("preparing to get git status...")
-                console.log(`Vault root is `)
+                console.log(`Vault root is ${this.vaultRoot}`)
 
-                const { stdout, stderr } = await execPromise("git status", { cwd: "/Users/kblissett/dev/mleng-knowledge-base" });
+                const { stdout, stderr } = await execPromise("git status", { cwd: this.vaultRoot });
 
                 console.log(`Git status stdout: ${stdout}`);
                 console.log(`Git status stderr: ${stderr}`);
@@ -46,7 +48,7 @@ export default class MyPlugin extends Plugin {
                 console.log("Preparing for a git pull");
 
                 try {
-                    const { stdout, stderr } = await execPromise("git fetch && git merge --no-commit", { cwd: "/Users/kblissett/dev/mleng-knowledge-base" });
+                    const { stdout, stderr } = await execPromise("git fetch && git merge --no-commit", { cwd: this.vaultRoot });
                     console.log(`Git status stdout: ${stdout}`);
                     console.log(`Git status stderr: ${stderr}`);
 
@@ -55,7 +57,7 @@ export default class MyPlugin extends Plugin {
                     console.log(e.code);
                     console.log(e.message);
                     new Notice("Could not pull due to merge conflicts");
-                    await execPromise("git merge --abort", { cwd: "/Users/kblissett/dev/mleng-knowledge-base" });
+                    await execPromise("git merge --abort", { cwd: this.vaultRoot });
                 }
             }
         })
