@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Plugin, FuzzySuggestModal } from 'obsidian';
+import { App, Modal, Notice, Plugin, FuzzySuggestModal, Vault } from 'obsidian';
 import { exec } from 'child_process';
 import { chdir } from 'process';
 import { promisify } from 'util';
@@ -14,18 +14,28 @@ export default class MyPlugin extends Plugin {
         })
 
         this.addCommand({
+            id: 'check-root',
+            name: 'Check Root',
+            callback: async () => {
+                const v = new Vault();
+                console.log(`Vault root is`);
+                console.log(v);
+            }
+        })
+
+        this.addCommand({
             id: 'git-status',
             name: 'Git Status',
             callback: async () => {
                 console.log("preparing to get git status...")
-                chdir("/Users/kblissett/dev/mleng-knowledge-base")
+                console.log(`Vault root is `)
 
-                const { stdout, stderr } = await execPromise("git status");
+                const { stdout, stderr } = await execPromise("git status", { cwd: "/Users/kblissett/dev/mleng-knowledge-base" });
 
                 console.log(`Git status stdout: ${stdout}`);
                 console.log(`Git status stderr: ${stderr}`);
 
-                new SampleModal(this.app, stdout).open();
+                new Notice(stdout);
             }
         });
 
@@ -34,14 +44,19 @@ export default class MyPlugin extends Plugin {
             name: "Git Pull",
             callback: async () => {
                 console.log("Preparing for a git pull");
-                chdir("/Users/kblissett/dev/mleng-knowledge-base");
 
-                const { stdout, stderr } = await execPromise("git pull");
+                try {
+                    const { stdout, stderr } = await execPromise("git fetch && git merge --no-commit", { cwd: "/Users/kblissett/dev/mleng-knowledge-base" });
+                    console.log(`Git status stdout: ${stdout}`);
+                    console.log(`Git status stderr: ${stderr}`);
 
-                console.log(`Git status stdout: ${stdout}`);
-                console.log(`Git status stderr: ${stderr}`);
-
-                new Notice(stdout);
+                    new Notice(stdout);
+                } catch (e) {
+                    console.log(e.code);
+                    console.log(e.message);
+                    new Notice("Could not pull due to merge conflicts");
+                    await execPromise("git merge --abort", { cwd: "/Users/kblissett/dev/mleng-knowledge-base" });
+                }
             }
         })
     }
