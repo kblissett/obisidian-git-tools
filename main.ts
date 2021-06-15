@@ -42,6 +42,14 @@ export default class MyPlugin extends Plugin {
         });
 
         this.addCommand({
+            id: 'git-commit',
+            name: "Commit",
+            callback: async () => {
+                new CommitModal(this.app).open();
+            }
+        })
+
+        this.addCommand({
             id: 'git-pull',
             name: "Git Pull",
             callback: async () => {
@@ -64,22 +72,48 @@ export default class MyPlugin extends Plugin {
     }
 }
 
-class SampleModal extends Modal {
-    text: string
 
-    constructor(app: App, text: string) {
+
+class CommitModal extends Modal {
+    constructor(app: App) {
         super(app);
-        this.text = text;
+    }
+
+    async gitCommit(message: string) {
+        try {
+            //@ts-ignore
+            const { stdout, stderr } = await execPromise(`git commit -am '${message}'`, { cwd: this.app.vault.adapter.basePath });
+            new Notice(stdout);
+            console.log(stderr);
+        } catch (e) {
+            console.log(e.code);
+            console.log(e.message);
+            new Notice(`Could not commit: ${e.message}`);
+        }
     }
 
     onOpen() {
-        let { contentEl } = this;
-        contentEl.setText(`# My Modal\n${this.text}`);
+        this.contentEl.innerHTML = `
+<div>
+    <h1>Commit</h1>
+    <label for="commitMessageField">Commit Message<br></label>
+    <input type="text" class="commitInput" style="width: 100%;" name="commitMessageField">
+</div>
+`;
+        const modalInput: any = document.querySelector('.commitInput');
+        modalInput.onkeydown = async (e: KeyboardEvent) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                const message = (e.target as HTMLInputElement).value;
+                await this.gitCommit(message);
+                this.close()
+            }
+        };
+        modalInput.focus();
     }
 
     onClose() {
-        let { contentEl } = this;
-        contentEl.empty();
+        this.contentEl.empty();
     }
 }
 
@@ -103,7 +137,7 @@ export class GitFuzzySuggestModal extends FuzzySuggestModal<string> {
                 console.log(`Git status stdout: ${stdout}`);
                 console.log(`Git status stderr: ${stderr}`);
 
-                new SampleModal(this.app, stdout).open();
+                new CommitModal(this.app).open();
             }
         }
 
