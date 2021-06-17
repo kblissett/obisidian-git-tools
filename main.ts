@@ -1,37 +1,19 @@
-import { App, Modal, Notice, Plugin, FuzzySuggestModal, Vault } from 'obsidian';
+import { App, FileSystemAdapter, Modal, Notice, Plugin } from 'obsidian';
 import { exec } from 'child_process';
-import { chdir } from 'process';
 import { promisify } from 'util';
 
 const execPromise = promisify(exec);
 
 export default class MyPlugin extends Plugin {
-    // @ts-ignore
-    vaultRoot: string = this.app.vault.adapter.basePath
-    async onload() {
+    vaultRoot: string = ((this.app.vault.adapter as FileSystemAdapter) as FileSystemAdapter).getBasePath()
+    async onload(): Promise<void> {
         console.log('loading Git plugin');
-
-        this.addRibbonIcon('sync', 'Git', _ => {
-            new GitFuzzySuggestModal(this.app).open();
-        })
-
-        this.addCommand({
-            id: 'check-root',
-            name: 'Check Root',
-            callback: async () => {
-                const v = new Vault();
-                console.log(`Vault root is`);
-                console.log(v);
-            }
-        })
 
         this.addCommand({
             id: 'git-status',
             name: 'Git Status',
             callback: async () => {
-                console.log("preparing to get git status...")
-                console.log(`Vault root is ${this.vaultRoot}`)
-
+                console.log("preparing to get git status...");
                 const { stdout, stderr } = await execPromise("git status", { cwd: this.vaultRoot });
 
                 console.log(`Git status stdout: ${stdout}`);
@@ -47,7 +29,7 @@ export default class MyPlugin extends Plugin {
             callback: async () => {
                 new CommitModal(this.app).open();
             }
-        })
+        });
 
         this.addCommand({
             id: 'git-pull',
@@ -68,7 +50,7 @@ export default class MyPlugin extends Plugin {
                     await execPromise("git merge --abort", { cwd: this.vaultRoot });
                 }
             }
-        })
+        });
     }
 }
 
@@ -81,8 +63,7 @@ class CommitModal extends Modal {
 
     async gitCommit(message: string) {
         try {
-            //@ts-ignore
-            const { stdout, stderr } = await execPromise(`git commit -am '${message}'`, { cwd: this.app.vault.adapter.basePath });
+            const { stdout, stderr } = await execPromise(`git commit -am '${message}'`, { cwd: (this.app.vault.adapter as FileSystemAdapter).getBasePath() });
             new Notice(stdout);
             console.log(stderr);
         } catch (e) {
@@ -100,13 +81,13 @@ class CommitModal extends Modal {
     <input type="text" class="commitInput" style="width: 100%;" name="commitMessageField">
 </div>
 `;
-        const modalInput: any = document.querySelector('.commitInput');
+        const modalInput: HTMLInputElement = document.querySelector('.commitInput');
         modalInput.onkeydown = async (e: KeyboardEvent) => {
             if (e.key === "Enter") {
                 e.preventDefault();
                 const message = (e.target as HTMLInputElement).value;
                 await this.gitCommit(message);
-                this.close()
+                this.close();
             }
         };
         modalInput.focus();
@@ -115,33 +96,4 @@ class CommitModal extends Modal {
     onClose() {
         this.contentEl.empty();
     }
-}
-
-export class GitFuzzySuggestModal extends FuzzySuggestModal<string> {
-    getItems(): string[] {
-        return ["status"];
-    }
-    getItemText(item: string): string {
-        return item;
-    }
-    onChooseItem(item: string, _: MouseEvent | KeyboardEvent): void {
-        console.log(`You chose ${item}`);
-
-        const actions = {
-            "status": async () => {
-                console.log("preparing to get git status...")
-                chdir("/Users/kblissett/dev/mleng-knowledge-base")
-
-                const { stdout, stderr } = await execPromise("git status");
-
-                console.log(`Git status stdout: ${stdout}`);
-                console.log(`Git status stderr: ${stderr}`);
-
-                new CommitModal(this.app).open();
-            }
-        }
-
-        actions[item]().then(console.log(`done with ${item}`));
-    }
-
 }

@@ -1,8 +1,8 @@
 {
-    "id": "mllabs-obsidian-git",
-    "name": "Obsidian Git",
+    "id": "obsidian-git-tools",
+    "name": "Git Tools for Obsidian",
     "version": "0.0.1",
     "minAppVersion": "0.9.12",
     "description": "A plugin for using git within obsidian.",
-    "author": "kblissett"
+    "author": "Kevin Blissett"
 }
