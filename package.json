@@ -1,5 +1,5 @@
 {
-  "name": "mllabs-obsidian-git",
+  "name": "obsidian-git-tools",
   "version": "0.0.1",
   "description": "A plugin for using git within obsidian.",
   "main": "index.js",

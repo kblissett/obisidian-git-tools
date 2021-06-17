@@ -1,6 +1,6 @@
 {
     "id": "obsidian-git-tools",
-    "name": "Git Tools for Obsidian",
+    "name": "Git Tools",
     "version": "0.0.1",
     "minAppVersion": "0.9.12",
     "description": "A plugin for using git within obsidian.",
