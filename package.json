@@ -4,12 +4,18 @@
   "description": "A plugin for using git within obsidian.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npm run lint && rollup -c",
+    "lint": "eslint . --ext .ts"
   },
   "author": "kblissett",
   "license": "MIT",
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^19.0.0",
+    "@rollup/plugin-node-resolve": "^13.0.0",
+    "@rollup/plugin-typescript": "^8.2.1",
     "@typescript-eslint/eslint-plugin": "^4.27.0",
+    "rollup": "^2.52.1",
     "typescript": "^4.3.2"
   },
   "dependencies": {

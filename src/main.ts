@@ -5,7 +5,7 @@ import { promisify } from 'util';
 const execPromise = promisify(exec);
 
 export default class MyPlugin extends Plugin {
-    vaultRoot: string = ((this.app.vault.adapter as FileSystemAdapter) as FileSystemAdapter).getBasePath()
+    vaultRoot: string = (this.app.vault.adapter as FileSystemAdapter).getBasePath()
     async onload(): Promise<void> {
         console.log('loading Git plugin');
 
@@ -33,7 +33,7 @@ export default class MyPlugin extends Plugin {
 
         this.addCommand({
             id: 'git-pull',
-            name: "Git Pull",
+            name: "Pull",
             callback: async () => {
                 console.log("Preparing for a git pull");
 
@@ -48,6 +48,31 @@ export default class MyPlugin extends Plugin {
                     console.log(e.message);
                     new Notice("Could not pull due to merge conflicts");
                     await execPromise("git merge --abort", { cwd: this.vaultRoot });
+                }
+            }
+        });
+
+        this.addCommand({
+            id: 'git-push',
+            name: "Push",
+            callback: async () => {
+                console.log("Preparing for a git push");
+
+                try {
+                    const { stdout, stderr } = await execPromise("git push", { cwd: this.vaultRoot });
+
+                    console.log(`Git status stdout: ${stdout}`);
+                    console.log(`Git status stderr: ${stderr}`);
+                    if (!stdout) {
+                        new Notice(stderr);
+                    } else {
+                        new Notice(stdout);
+                    }
+
+                } catch (e) {
+                    console.log(e.code);
+                    console.log(e.message);
+                    new Notice("Could not push");
                 }
             }
         });
