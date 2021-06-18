@@ -1,4 +1,4 @@
-import { App, FileSystemAdapter, Modal, Notice, Plugin } from 'obsidian';
+import { App, FileSystemAdapter, Modal, Notice, Plugin, FuzzySuggestModal } from 'obsidian';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -20,6 +20,55 @@ export default class MyPlugin extends Plugin {
                 console.log(`Git status stderr: ${stderr}`);
 
                 new Notice(stdout);
+            }
+        });
+
+        this.addCommand({
+            id: 'git-branch',
+            name: 'Branch',
+            callback: async () => {
+                console.log("Called branch");
+
+                try {
+                    const { stdout } = await execPromise("git for-each-ref --format '%(refname)' refs/heads | xargs -n1 basename", { cwd: this.vaultRoot });
+                    console.log(`Branches are:\n${stdout}`);
+
+                    const branch = await new BranchModal(this.app, stdout.split("\n")).open();
+                    {
+                        const { stdout, stderr } = await execPromise(`git checkout ${branch}`, { cwd: this.vaultRoot });
+                        console.log(stdout);
+                        console.log(stderr);
+                        new Notice(`${stdout}\n${stderr}`);
+                    }
+                } catch (e) {
+                    console.log(e.code);
+                    console.log(e.message);
+                }
+            }
+        });
+
+        this.addCommand({
+            id: 'git-new-branch',
+            name: 'New Branch',
+            callback: async () => {
+                console.log("Called new branch");
+
+                try {
+                    const { stdout } = await execPromise("git for-each-ref --format '%(refname)' refs/heads | xargs -n1 basename", { cwd: this.vaultRoot });
+                    console.log(`Branches are:\n${stdout}`);
+
+                    const branchName = await new NewBranchModal(this.app).open();
+                    console.log(`New branch name is: ${branchName}`);
+                    {
+                        const { stdout, stderr } = await execPromise(`git checkout -b ${branchName}`, { cwd: this.vaultRoot });
+                        console.log(stdout);
+                        console.log(stderr);
+                        new Notice(`${stdout}\n${stderr}`);
+                    }
+                } catch (e) {
+                    console.log(e.code);
+                    console.log(e.message);
+                }
             }
         });
 
@@ -76,6 +125,73 @@ export default class MyPlugin extends Plugin {
                 }
             }
         });
+    }
+}
+
+
+class BranchModal extends FuzzySuggestModal<string> {
+    private resolve: (selected: string) => void;
+    constructor(app: App, public branches: string[]) {
+        super(app);
+    }
+
+    open(): Promise<string> {
+        super.open();
+        return new Promise((resolve) => {
+            this.resolve = resolve;
+        });
+    }
+
+    getItems(): string[] {
+        return this.branches;
+    }
+    getItemText(item: string): string {
+        return item;
+    }
+    onChooseItem(item: string, _evt: MouseEvent | KeyboardEvent): void {
+        console.log(`You chose: ${item}`);
+        this.resolve(item);
+    }
+}
+
+
+class NewBranchModal extends Modal {
+    private resolve: (selected: string) => void;
+    private reject: () => void;
+
+    constructor(app: App) {
+        super(app);
+    }
+
+    open(): Promise<string> {
+        super.open();
+        return new Promise((resolve, reject) => {
+            this.resolve = resolve;
+            this.reject = reject;
+        });
+    }
+
+    onOpen() {
+        this.contentEl.innerHTML = `
+<div>
+    <h1>Create a New Branch</h1>
+    <label for="messageField">Branch Name<br></label>
+    <input type="text" class="commitInput" style="width: 100%;" name="messageField">
+</div>
+`;
+        const modalInput: HTMLInputElement = document.querySelector('.commitInput');
+        modalInput.onkeydown = async (e: KeyboardEvent) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                this.resolve((e.target as HTMLInputElement).value);
+                this.close();
+            }
+        };
+        modalInput.focus();
+    }
+
+    onClose() {
+        this.contentEl.empty();
     }
 }
 
