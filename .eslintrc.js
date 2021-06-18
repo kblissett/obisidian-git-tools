@@ -4,7 +4,8 @@ module.exports = {
     plugins: ["@typescript-eslint"],
     extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
     rules: {
-        "semi": ["error", "always"]
+        "semi": ["error", "always"],
+        '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }]
     },
     env: {
         node: true

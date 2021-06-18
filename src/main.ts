@@ -1,11 +1,14 @@
 import { App, FileSystemAdapter, Modal, Notice, Plugin, FuzzySuggestModal } from 'obsidian';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import Git from './git';
 
 const execPromise = promisify(exec);
 
 export default class MyPlugin extends Plugin {
     vaultRoot: string = (this.app.vault.adapter as FileSystemAdapter).getBasePath()
+    private git = new Git(this.vaultRoot);
+
     async onload(): Promise<void> {
         console.log('loading Git plugin');
 
@@ -14,12 +17,10 @@ export default class MyPlugin extends Plugin {
             name: 'Git Status',
             callback: async () => {
                 console.log("preparing to get git status...");
-                const { stdout, stderr } = await execPromise("git status", { cwd: this.vaultRoot });
+                const message = await this.git.status();
+                console.log(`Git status message: ${message}`);
 
-                console.log(`Git status stdout: ${stdout}`);
-                console.log(`Git status stderr: ${stderr}`);
-
-                new Notice(stdout);
+                new Notice(message);
             }
         });
 
@@ -30,16 +31,14 @@ export default class MyPlugin extends Plugin {
                 console.log("Called branch");
 
                 try {
-                    const { stdout } = await execPromise("git for-each-ref --format '%(refname)' refs/heads | xargs -n1 basename", { cwd: this.vaultRoot });
-                    console.log(`Branches are:\n${stdout}`);
+                    const branches = await this.git.getBranches();
+                    console.log(`Branches are:\n${branches.join("\n")}`);
 
-                    const branch = await new BranchModal(this.app, stdout.split("\n")).open();
-                    {
-                        const { stdout, stderr } = await execPromise(`git checkout ${branch}`, { cwd: this.vaultRoot });
-                        console.log(stdout);
-                        console.log(stderr);
-                        new Notice(`${stdout}\n${stderr}`);
-                    }
+                    console.log("awaiting branch modal");
+                    const selectedBranch = await new BranchModal(this.app, branches).open();
+                    console.log("Branch modal resolved");
+                    await this.git.checkout(selectedBranch);
+                    new Notice(`Now on branch ${selectedBranch}`);
                 } catch (e) {
                     console.log(e.code);
                     console.log(e.message);
@@ -54,17 +53,10 @@ export default class MyPlugin extends Plugin {
                 console.log("Called new branch");
 
                 try {
-                    const { stdout } = await execPromise("git for-each-ref --format '%(refname)' refs/heads | xargs -n1 basename", { cwd: this.vaultRoot });
-                    console.log(`Branches are:\n${stdout}`);
-
                     const branchName = await new NewBranchModal(this.app).open();
                     console.log(`New branch name is: ${branchName}`);
-                    {
-                        const { stdout, stderr } = await execPromise(`git checkout -b ${branchName}`, { cwd: this.vaultRoot });
-                        console.log(stdout);
-                        console.log(stderr);
-                        new Notice(`${stdout}\n${stderr}`);
-                    }
+                    await this.git.checkout(branchName, true);
+                    new Notice(`Now on branch ${branchName}`);
                 } catch (e) {
                     console.log(e.code);
                     console.log(e.message);
@@ -87,16 +79,12 @@ export default class MyPlugin extends Plugin {
                 console.log("Preparing for a git pull");
 
                 try {
-                    const { stdout, stderr } = await execPromise("git fetch && git merge --no-commit", { cwd: this.vaultRoot });
-                    console.log(`Git status stdout: ${stdout}`);
-                    console.log(`Git status stderr: ${stderr}`);
-
-                    new Notice(stdout);
+                    const message = await this.git.pull();
+                    new Notice(message);
                 } catch (e) {
                     console.log(e.code);
                     console.log(e.message);
-                    new Notice("Could not pull due to merge conflicts");
-                    await execPromise("git merge --abort", { cwd: this.vaultRoot });
+                    new Notice("Could not pull successfully");
                 }
             }
         });
@@ -108,16 +96,8 @@ export default class MyPlugin extends Plugin {
                 console.log("Preparing for a git push");
 
                 try {
-                    const { stdout, stderr } = await execPromise("git push", { cwd: this.vaultRoot });
-
-                    console.log(`Git status stdout: ${stdout}`);
-                    console.log(`Git status stderr: ${stderr}`);
-                    if (!stdout) {
-                        new Notice(stderr);
-                    } else {
-                        new Notice(stdout);
-                    }
-
+                    const message = await this.git.push();
+                    new Notice(message);
                 } catch (e) {
                     console.log(e.code);
                     console.log(e.message);
@@ -129,15 +109,19 @@ export default class MyPlugin extends Plugin {
 }
 
 
+// If this modal gets closed before an item is selected then we'll leak
+// resources waiting on the result. Not sure yet what the solution to this
+// is. Unfortunately, it seems that onClose gets called before onChooseItem.
 class BranchModal extends FuzzySuggestModal<string> {
     private resolve: (selected: string) => void;
+
     constructor(app: App, public branches: string[]) {
         super(app);
     }
 
     open(): Promise<string> {
         super.open();
-        return new Promise((resolve) => {
+        return new Promise((resolve, _reject) => {
             this.resolve = resolve;
         });
     }
